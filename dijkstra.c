@@ -37,7 +37,71 @@ typedef struct{
 double* distancias;
 int* previos;
 
+//2^i nodos y 2^j aristas
+//pesos aleatorios entre 0 y 1
+Nodo* creacionNodos(int nodosSize, int aristasSize){
+    Nodo* nodos = malloc(sizeof(Nodo) * nodosSize);
+    int maxAristas = aristasSize/nodosSize + 1;
 
+    srand(time(NULL));
+    //Crea todos los nodos
+    for(int n = 0; n < nodosSize; n++){
+        Nodo nuevoNodo;
+        nuevoNodo.id = n;
+        nodos[n] = nuevoNodo;
+        nodos[n].vecinos = malloc(sizeof(Aristas) * maxAristas);
+        //ningun nodo puede tener mas de cierta cantidad de aristas
+    }
+    //asegura que sea conexo
+    for(int n = 1; n < nodosSize; n++){
+        Aristas nuevaAristaIda;
+        Aristas nuevaAristaVuelta;
+        double peso = (double)rand() / RAND_MAX;
+        nuevaAristaIda.peso = peso;
+        nuevaAristaVuelta.peso = peso;
+
+        nuevaAristaIda.vecino = nodos[n];
+        nuevaAristaVuelta.vecino = nodos[n-1];
+
+        nodos[n-1].vecinos[nodos[n-1].sizeVecinos] = nuevaAristaIda;
+        nodos[n-1].sizeVecinos++;
+
+        nodos[n].vecinos[nodos[n].sizeVecinos] = nuevaAristaVuelta;
+        nodos[n].sizeVecinos++;
+    }
+
+    //el resto de las aristas de forma random
+    int aristasFaltantes = aristasSize-nodosSize+1;
+    while(aristasFaltantes != 0){
+        int index1 = rand() % aristasFaltantes;
+        int index2 = rand() % aristasFaltantes;
+        do{
+            index1 = rand() % aristasFaltantes;
+            index2 = rand() % aristasFaltantes;
+        } while(index1 == index2 || nodos[index1].sizeVecinos == maxAristas || nodos[index2].sizeVecinos == maxAristas); 
+        //repetir si son iguales o ya no dejamos a ese nodo tener mas aristas
+
+        Aristas nuevaAristaIda;
+        Aristas nuevaAristaVuelta;
+        double peso = (double)rand() / RAND_MAX;
+        nuevaAristaIda.peso = peso;
+        nuevaAristaVuelta.peso = peso;
+
+        nuevaAristaIda.vecino = nodos[index1];
+        nuevaAristaVuelta.vecino = nodos[index2];
+
+        nodos[index2].vecinos[nodos[index2].sizeVecinos] = nuevaAristaIda;
+        nodos[index2].sizeVecinos++;
+
+        nodos[index1].vecinos[nodos[index1].sizeVecinos] = nuevaAristaVuelta;
+        nodos[index1].sizeVecinos++;
+
+        aristasFaltantes--;
+    }
+
+    return nodos;
+
+}
 
 int main(){
 
@@ -59,10 +123,10 @@ int main(){
     raiz.id = 0;
     previoRaiz.id = -1;
     //la distancia del nodo raiz como 0
-    distancias[distTA] = 0;
+    distancias[raiz.id] = 0;
     distTA++;
     //su nodo previo como -1
-    previos[prevTA] = -1;
+    previos[raiz.id] = -1;
     prevTA++;
     //agrear el par distancia=0 y nodo=raiz a Q
     Q q = {malloc(sizeof(Par) * tamañoV), 0, INFINITY, 0};
@@ -75,10 +139,10 @@ int main(){
         Nodo unNodo = todosLosNodos[i];
         if(unNodo.id != raiz.id){
             //Definimos distancias como infinita
-            distancias[distTA] = INFINITY;
+            distancias[unNodo.id] = INFINITY;
             distTA++;
             //previos como indefinido
-            previos[prevTA] = NULL;
+            previos[unNodo.id] = NULL;
             prevTA++;
             //Agregamos el par distancia infinito y nodo v a q
             /*
@@ -94,12 +158,35 @@ int main(){
     //o se hizo anteriormente en el for loop
 
     //Mientras q no este vacio 
+    //Si no me equivoco esto depende de si es heap o cola de fibonacci
     while(q.tamañoDistNodo != 0){
         //obtener el par (d,v) con menor distancia de q
+        Par minPar = q.distNodo[q.indexMinDist];
         //eliminarlo de q 
-
+        double posMin = INFINITY;
+        for(int i = 0; i < q.tamañoDistNodo-1; i++){
+            if(i < q.indexMinDist){
+                q.distNodo[i] = q.distNodo[i];
+            }
+            else if(i >= q.indexMinDist){
+                q.distNodo[i] = q.distNodo[i+1];
+            }
+            if(q.distNodo[i].distancia <= posMin){
+                q.indexMinDist = i;
+                q.minDist = q.distNodo[i].distancia;
+                posMin = q.distNodo[i].distancia;
+            }
+        }
+        q.tamañoDistNodo--;
         //por cada vecion de v 
-            //
+        for(int i = 0; i < minPar.n1.sizeVecinos; i++){
+            Aristas vecinoMin = minPar.n1.vecinos[i];
+            if(distancias[vecinoMin.vecino.id] > distancias[minPar.n1.id] + vecinoMin.peso){
+                distancias[vecinoMin.vecino.id] = distancias[minPar.n1.id] + vecinoMin.peso;
+                previos[vecinoMin.vecino.id] = minPar.n1.id;
+                //actualizamos la distancia del par que representa al nodo u en Q utilizando decreaseKey
+            }
+        }
     }
 
     return 0;
